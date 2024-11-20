@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canadian Housing Data</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            margin-top: 20px;
+        }
+        .search-container {
+            padding: 20px;
+            border-radius: 10px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .response-container {
+            margin-top: 20px;
+        }
+        .image-gallery img {
+            width: 800px;
+            height: auto;
+            margin: 20px;
+        }
+        .image-gallery {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .range-group {
+            display: flex;
+            gap: 15px; /* Space between range inputs */
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container-fluid">
+            <span class="navbar-brand mb-0 h1">Canadian Housing Data</span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Unified Search Bar -->
+        <div class="search-container">
+            <form id="searchForm" class="row g-3 align-items-end">
+                <!-- Image Search -->
+                <div class="col-md-4">
+                    <label for="searchType" class="form-label">Search:</label>
+                    <select id="searchType" class="form-select">
+                        <option value="images">Images</option>
+                        <option value="data">Data</option>
+                    </select>
+                </div>
+
+                <!-- Dataset Options for Data -->
+                <div class="col-md-4 d-none" id="dataOptions">
+                    <label for="endpoint" class="form-label">Select Dataset:</label>
+                    <select id="endpoint" class="form-select">
+                        <option value="flattened_housing">Flattened Housing Data</option>
+                        <option value="advanced_predictions">Advanced Predictions</option>
+                        <option value="affordability_by_region">Affordability by Region</option>
+                        <option value="regional_housing_characteristics">Regional Housing Characteristics</option>
+                    </select>
+                </div>
+
+                <!-- Province Options for Images -->
+                <div class="col-md-4" id="imageOptions">
+                    <label for="province" class="form-label">Select Province:</label>
+                    <select id="province" class="form-select">
+                        <option value="Manitoba">Manitoba</option>
+                        <option value="Yukon">Yukon</option>
+                        <option value="Nova Scotia">Nova Scotia</option>
+                        <option value="Northwest Territories">Northwest Territories</option>
+                        <option value="Newfoundland and Labrador">Newfoundland and Labrador</option>
+                        <option value="Alberta">Alberta</option>
+                        <option value="Nunavut">Nunavut</option>
+                        <option value="New Brunswick">New Brunswick</option>
+                        <option value="Saskatchewan">Saskatchewan</option>
+                        <option value="Prince Edward Island">Prince Edward Island</option>
+                        <option value="Ontario">Ontario</option>
+                        <option value="British Columbia">British Columbia</option>
+                        <option value="Quebec">Quebec</option>
+                        <option value="ml">ML Images</option>
+                    </select>
+                </div>
+
+                <!-- Range Inputs for Data -->
+                <div class="col-md-4 range-group d-none" id="rangeInputs">
+                    <label for="rangeFrom" class="form-label">Range:</label>
+                    <input type="number" id="rangeFrom" class="form-control" placeholder="From" />
+                    <input type="number" id="rangeTo" class="form-control" placeholder="To" />
+                </div>
+
+                <!-- Search Button -->
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Search</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Response Container -->
+        <div class="response-container" id="responseContainer"></div>
+    </div>
+
+    <script>
+        const searchForm = document.getElementById('searchForm');
+        const searchType = document.getElementById('searchType');
+        const dataOptions = document.getElementById('dataOptions');
+        const imageOptions = document.getElementById('imageOptions');
+        const rangeInputs = document.getElementById('rangeInputs');
+        const responseContainer = document.getElementById('responseContainer');
+
+        // Toggle options based on the selected search type
+        searchType.addEventListener('change', () => {
+            const selected = searchType.value;
+            if (selected === 'data') {
+                dataOptions.classList.remove('d-none');
+                imageOptions.classList.add('d-none');
+                rangeInputs.classList.remove('d-none');
+            } else if (selected === 'images') {
+                dataOptions.classList.add('d-none');
+                imageOptions.classList.remove('d-none');
+                rangeInputs.classList.add('d-none');
+            }
+        });
+
+        // Handle form submission
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            responseContainer.innerHTML = ''; // Clear previous results
+            const selectedType = searchType.value;
+
+            if (selectedType === 'data') {
+                // Fetch Data
+                const dataset = document.getElementById('endpoint').value;
+                const from = document.getElementById('rangeFrom').value || 1;
+                const to = document.getElementById('rangeTo').value || 10;
+                const url = `http://127.0.0.1:8000/data/${dataset}?page=${from}&limit=${to}`;
+                try {
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    displayData(data);
+                } catch (error) {
+                    responseContainer.innerHTML = `<p class="text-danger">Error fetching data: ${error.message}</p>`;
+                }
+            } else if (selectedType === 'images') {
+                // Fetch Images
+                const province = document.getElementById('province').value;
+                const url = `http://127.0.0.1:8000/images/${province}`;
+                try {
+                    const response = await fetch(url);
+                    const images = await response.json();
+                    displayImages(images);
+                } catch (error) {
+                    responseContainer.innerHTML = `<p class="text-danger">Error fetching images: ${error.message}</p>`;
+                }
+            }
+        });
+
+        function displayData(data) {
+            const table = `
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>${Object.keys(data[0] || {}).map(key => `<th>${key}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                        ${data.map(row => `<tr>${Object.values(row).map(value => `<td>${value}</td>`).join('')}</tr>`).join('')}
+                    </tbody>
+                </table>
+            `;
+            responseContainer.innerHTML = table;
+        }
+
+        function displayImages(images) {
+            const gallery = images.map(src => `<img src="${src}" alt="Image">`).join('');
+            responseContainer.innerHTML = `<div class="image-gallery">${gallery}</div>`;
+        }
+    </script>
+</body>
+</html>
